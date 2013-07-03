@@ -49,6 +49,7 @@ source "${LIB_DIR}/syslog.lib.sh"
 
 MYSQL_CMD=${MYSQL_CMD:='/usr/bin/mysql'}
 MYSQLDUMP_CMD=${MYSQLDUMP_CMD:='/usr/bin/mysqldump'}
+MYSQLDUMP_OPTS=${MYSQLDUMP_OPTS:='--flush-logs'}
 
 FIND_CMD=${FIND_CMD:='/usr/bin/find'}
 DELETE_AFTER=${DELETE_AFTER:=14}  # delete backup after # of days
@@ -65,6 +66,23 @@ COMPRESSOR_SUFFIX=${COMPRESSOR_SUFFIX:='bz2'}
 MYSQLDUMP_DIR=${MYSQLDUMP_DIR:='/var/backup/mysql/dump'}
 
 UMASK=${UMASK:='077'}
+
+# Returns the MySQL server version
+function getMySQLVersion()
+{
+    local version=`${MYSQL_CMD} -e "SELECT version();" | tail -n 1`
+    if [ $? -ne 0 -o -z "${version}" ]; then
+        return 1
+    fi
+
+    local versionNumber=`echo "${version}" | ${GREP_CMD} -o -P "\d+\.\d+\.\d+"`
+    if [ -z "${versionNumber}" ]; then
+        return 1
+    fi
+
+    echo "${versionNumber}"
+}
+
 
 
 # Returns all database names which are present on this server
@@ -99,7 +117,7 @@ function dumpDatabase ()
     # clear the PIPESTATUS, to make sure it contatins no values beforhand
     unset PIPESTATUS
 
-    ${MYSQLDUMP_CMD} --flush-logs ${consistencyHandling} ${database} | \
+    ${MYSQLDUMP_CMD} ${MYSQLDUMP_OPTS} ${consistencyHandling} ${database} | \
         ${COMPRESSOR_CMD} ${COMPRESSOR_OPTS} > ${dumpTarget}
 
     # if either mysqldump (before the pipe) or the compressor (after the pipe)
@@ -156,7 +174,16 @@ function doMySQLBackup ()
     elif [ ! -w "${MYSQLDUMP_DIR}" ]; then
         die "Dump dir '${MYSQLDUMP_DIR}' is not writable, unable to proceed"
     fi
-   
+    
+    # Check if the MySQL version is new enough to include the --events option
+    local mysqlVersion=$(getMySQLVersion)
+    if [ -z ${mysqlVersion} ]; then
+        warn "Could not determine the MySQL server version"
+    elif [[ "${mysqlVersion}" < "5.1.6" ]]; then
+        info "MySQL server version is too old to add the --events option"
+    else
+        MYSQLDUMP_OPTS="${MYSQLDUMP_OPTS} --events"
+    fi
  
     # clear the PIPESTATUS, to make sure it contatins no values beforhand
     unset PIPESTATUS

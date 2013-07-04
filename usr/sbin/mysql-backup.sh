@@ -194,7 +194,7 @@ function doMySQLBackup ()
     # Check if the MySQL version is new enough to include the --events option
     local mysqlVersion=$( getMySQLVersion )
 
-    if [ -z ${mysqlVersion} || $? -ne 0 ]; then
+    if [ -z ${mysqlVersion} -o $? -ne 0 ]; then
         error "Could not determine the MySQL server version"
     elif [[ "${mysqlVersion}" < "5.1.6" ]]; then
         info "MySQL server version is too old to add the --events option"

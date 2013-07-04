@@ -70,17 +70,21 @@ UMASK=${UMASK:='077'}
 # Returns the MySQL server version
 function getMySQLVersion()
 {
-    local version=`${MYSQL_CMD} -e "SELECT version();" | tail -n 1`
-    if [ $? -ne 0 -o -z "${version}" ]; then
-        return 1
-    fi
+    # clear the PIPESTATUS, to make sure it contains no values beforhand
+    unset PIPESTATUS
 
-    local versionNumber=`echo "${version}" | ${GREP_CMD} -o -P "\d+\.\d+\.\d+"`
-    if [ -z "${versionNumber}" ]; then
-        return 1
-    fi
+    # Get the MySQL version, in the form of X.Y.Z
+    echo "SELECT version();" | ${MYSQL_CMD} | ${GREP_CMD} -o -P "\d+\.\d+\.\d+"
 
-    echo "${versionNumber}"
+    # If one of the piped commands faild, consider it as an error
+    local returnCode
+    for returnCode in "${PIPESTATUS[@]}"; do
+        if [ $returnCode -ne 0 ]; then
+            return $returnCode
+        fi
+    done
+
+    return 0
 }
 
 
@@ -88,11 +92,23 @@ function getMySQLVersion()
 # Returns all database names which are present on this server
 function getAllDatabases ()
 {
+    # clear the PIPESTATUS, to make sure it contains no values beforhand
+    unset PIPESTATUS
+
+
     # list all databases but exclude information_schema and performance_schema
     echo "SHOW DATABASES" | ${MYSQL_CMD} --column-names=0 | \
         $GREP_CMD -v -E '^information_schema|performance_schema$'
 
-    return $?
+    # If one of the piped commands faild, consider it as an error
+    local returnCode
+    for returnCode in "${PIPESTATUS[@]}"; do
+        if [ $returnCode -ne 0 ]; then
+            return $returnCode
+        fi
+    done
+
+    return 0
 }
 
 
@@ -114,7 +130,7 @@ function dumpDatabase ()
         consistencyHandling='--lock-tables'
     fi
 
-    # clear the PIPESTATUS, to make sure it contatins no values beforhand
+    # clear the PIPESTATUS, to make sure it contains no values beforhand
     unset PIPESTATUS
 
     ${MYSQLDUMP_CMD} ${MYSQLDUMP_OPTS} ${consistencyHandling} ${database} | \
@@ -176,16 +192,18 @@ function doMySQLBackup ()
     fi
     
     # Check if the MySQL version is new enough to include the --events option
-    local mysqlVersion=$(getMySQLVersion)
-    if [ -z ${mysqlVersion} ]; then
-        warn "Could not determine the MySQL server version"
+    local mysqlVersion=$( getMySQLVersion )
+
+    if [ -z ${mysqlVersion} || $? -ne 0 ]; then
+        error "Could not determine the MySQL server version"
     elif [[ "${mysqlVersion}" < "5.1.6" ]]; then
         info "MySQL server version is too old to add the --events option"
     else
         MYSQLDUMP_OPTS="${MYSQLDUMP_OPTS} --events"
     fi
- 
-    # clear the PIPESTATUS, to make sure it contatins no values beforhand
+
+
+    # clear the PIPESTATUS, to make sure it contains no values beforhand
     unset PIPESTATUS
 
     getAllDatabases | while read database; do

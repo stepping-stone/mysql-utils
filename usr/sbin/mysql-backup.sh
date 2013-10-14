@@ -230,7 +230,9 @@ function doMySQLBackup ()
     fi
 
     # delete old dumps
-    ${FIND_CMD} ${MYSQLDUMP_DIR} -type f -ctime +${DELETE_AFTER} -delete
+    info "Removing dump files older than ${DELETE_AFTER} day(s)"
+    ${FIND_CMD} ${MYSQLDUMP_DIR} -type f -ctime +${DELETE_AFTER} -delete || \
+        error "Unable to remove old dump files"
 
     info 'MySQL backup finished'
 }

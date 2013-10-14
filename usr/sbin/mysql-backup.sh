@@ -63,6 +63,14 @@ COMPRESSOR_CMD=${COMPRESSOR_CMD:='/bin/bzip2'}
 COMPRESSOR_OPTS=${COMPRESSOR_OPTS:='--best --force --quiet'}
 COMPRESSOR_SUFFIX=${COMPRESSOR_SUFFIX:='bz2'}
 
+if ! test -x "${COMPRESSOR_CMD}"; then
+    COMPRESSOR_CMD="/usr/bin/bzip2"
+
+    test -x "${COMPRESSOR_CMD}" || \
+        die "Missing compressor command: '${COMPRESSOR_CMD}'"
+fi
+
+
 MYSQLDUMP_DIR=${MYSQLDUMP_DIR:='/var/backup/mysql/dump'}
 
 UMASK=${UMASK:='077'}

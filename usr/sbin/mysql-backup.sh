@@ -3,10 +3,10 @@
 # mysql-backup.sh - Dumps and compresses all MySQL databases
 ################################################################################
 #
-# Copyright (C) 2013 stepping stone GmbH
-#                    Bern, Switzerland
-#                    http://www.stepping-stone.ch
-#                    support@stepping-stone.ch
+# Copyright (C) 2013 - 2015 stepping stone GmbH
+#                           Bern, Switzerland
+#                           http://www.stepping-stone.ch
+#                           support@stepping-stone.ch
 #
 # Authors:
 #   Christian Affolter <christian.affolter@stepping-stone.ch>
@@ -78,11 +78,15 @@ UMASK=${UMASK:='077'}
 # Returns the MySQL server version
 function getMySQLVersion()
 {
+    # if set to true, the function will echo the version without the
+    # separator dots.
+    local removeDots=${1:-false}
+
     # clear the PIPESTATUS, to make sure it contains no values beforhand
     unset PIPESTATUS
 
     # Get the MySQL version, in the form of X.Y.Z
-    echo "SELECT version();" | ${MYSQL_CMD} | ${GREP_CMD} -o -P "\d+\.\d+\.\d+"
+    local version=$( ${MYSQL_CMD} -e "SELECT version();" | ${GREP_CMD} -o -P "\d+\.\d+\.\d+" )
 
     # If one of the piped commands faild, consider it as an error
     local returnCode
@@ -91,6 +95,13 @@ function getMySQLVersion()
             return $returnCode
         fi
     done
+
+    if ${removeDots}; then
+       # echo without the version separator dots
+       echo ${version//.}
+    else
+       echo $version
+    fi
 
     return 0
 }
@@ -200,11 +211,12 @@ function doMySQLBackup ()
     fi
     
     # Check if the MySQL version is new enough to include the --events option
-    local mysqlVersion=$( getMySQLVersion )
+    # The version will be returned without the separator dots
+    local mysqlVersion=$( getMySQLVersion true )
 
-    if [ -z ${mysqlVersion} -o $? -ne 0 ]; then
+    if [ -z "${mysqlVersion}" -o $? -ne 0 ]; then
         error "Could not determine the MySQL server version"
-    elif [[ "${mysqlVersion}" < "5.1.6" ]]; then
+    elif [ "${mysqlVersion}" -lt "516" ]; then
         info "MySQL server version is too old to add the --events option"
     else
         MYSQLDUMP_OPTS="${MYSQLDUMP_OPTS} --events"

@@ -3,13 +3,14 @@
 # mysql-backup.sh - Dumps and compresses all MySQL databases
 ################################################################################
 #
-# Copyright (C) 2013 - 2015 stepping stone GmbH
+# Copyright (C) 2013 - 2016 stepping stone GmbH
 #                           Bern, Switzerland
 #                           http://www.stepping-stone.ch
 #                           support@stepping-stone.ch
 #
 # Authors:
 #   Christian Affolter <christian.affolter@stepping-stone.ch>
+#   Yannick Denzer <yannick.denzer@stepping-stone.ch>
 #
 # Licensed under the EUPL, Version 1.1.
 #
@@ -196,6 +197,17 @@ function databaseHasNonTransactionalStorageEngine
 }
 
 
+# Check whether the database uses GTIDs (global transaction identifiers or not.
+# Fur further information on GTIDs see https://dev.mysql.com/doc/refman/5.6/en/replication-gtids-concepts.html.
+#
+# Returns 0 if the database uses GTIDs, otherwise 1.
+function databaseHasGTIDsEnabled
+{
+    ${MYSQL_CMD} --batch --execute 'SHOW VARIABLES LIKE "gtid_mode"' \
+        | ${GREP_CMD} -qE '^gtid_mode\s+ON$'
+}
+
+
 function doMySQLBackup ()
 {
     umask ${UMASK}
@@ -222,6 +234,11 @@ function doMySQLBackup ()
         MYSQLDUMP_OPTS="${MYSQLDUMP_OPTS} --events"
     fi
 
+    # Don't dump the GTIDs if the database uses GTIDs. For further information on the option
+    # "--set-gtid-purged" see https://dev.mysql.com/doc/refman/5.6/en/mysqldump.html#option_mysqldump_set-gtid-purged.
+    if databaseHasGTIDsEnabled; then
+        MYSQLDUMP_OPTS="${MYSQLDUMP_OPTS} --set-gtid-purged=OFF"
+    fi
 
     # clear the PIPESTATUS, to make sure it contains no values beforhand
     unset PIPESTATUS

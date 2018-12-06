@@ -118,7 +118,7 @@ function getAllDatabases ()
 
     # list all databases but exclude information_schema and performance_schema
     echo "SHOW DATABASES" | ${MYSQL_CMD} --column-names=0 | \
-        $GREP_CMD -v -E '^information_schema|performance_schema$'
+        $GREP_CMD -v -E '^information_schema|performance_schema|sys$'
 
     # If one of the piped commands faild, consider it as an error
     local returnCode

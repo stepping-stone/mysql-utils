@@ -268,4 +268,8 @@ function doMySQLBackup ()
 
 
 # Aaaaand here we go!
-doMySQLBackup 3>&1 1>&2 2>&3 3>&- | grep -vF 'WARNING: no verification of server certificate will be done. Use --ssl-mode=VERIFY_CA or VERIFY_IDENTITY.'
+{
+	doMySQLBackup 3>&1 1>&2 2>&3 3>&- \
+		| grep -vF 'WARNING: no verification of server certificate will be done. Use --ssl-mode=VERIFY_CA or VERIFY_IDENTITY.' \
+		>&2 3>&-
+} 3>&1

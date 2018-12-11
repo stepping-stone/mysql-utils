@@ -168,15 +168,15 @@ function dumpDatabase ()
 
 # Check if a table of a given database uses a non transactional
 # storage engine such as MyISAM.
-#    
+#
 # Returns 0 if at least one table uses a non transactional storage engine
 function databaseHasNonTransactionalStorageEngine
 {
     local database="$1"
-    
-    local sql="SELECT COUNT(ENGINE) FROM TABLES 
+
+    local sql="SELECT COUNT(ENGINE) FROM TABLES
                WHERE TABLE_SCHEMA='${database}' AND NOT ENGINE='InnoDB';"
-    
+
     local cmd="echo \"$sql\" | ${MYSQL_CMD} --column-names=0 INFORMATION_SCHEMA"
 
     local numberOfTables=$( eval $cmd )
@@ -213,15 +213,15 @@ function doMySQLBackup ()
     umask ${UMASK}
 
     local database=''
-   
-    info 'Starting MySQL backup'   
+
+    info 'Starting MySQL backup'
 
     if [ ! -d "${MYSQLDUMP_DIR}" ]; then
         die "Missing dump dir '${MYSQLDUMP_DIR}', unable to proceed"
     elif [ ! -w "${MYSQLDUMP_DIR}" ]; then
         die "Dump dir '${MYSQLDUMP_DIR}' is not writable, unable to proceed"
     fi
-    
+
     # Check if the MySQL version is new enough to include the --events option
     # The version will be returned without the separator dots
     local mysqlVersion=$( getMySQLVersion true )
